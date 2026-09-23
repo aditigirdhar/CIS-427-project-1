@@ -1,9 +1,11 @@
 import socket
 import sqlite3
-
+# Connect to the SQLite database
 connection = sqlite3.connect("pokemon.db")
 cursor = connection.cursor()
 
+
+# Create the Users table if it does not already exist
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS Users (
     ID INTEGER PRIMARY KEY,
@@ -17,6 +19,8 @@ CREATE TABLE IF NOT EXISTS Users (
 """)
 connection.commit()
 
+
+# Create the Pokemon_cards table if it does not already exist
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS Pokemon_cards (
     ID INTEGER PRIMARY KEY,
@@ -29,7 +33,7 @@ CREATE TABLE IF NOT EXISTS Pokemon_cards (
 )
 """)
 connection.commit()
-
+# Create an initial root user if the database has no users
 cursor.execute("SELECT COUNT(*) FROM Users")
 user_count = cursor.fetchone()[0]
 
@@ -42,6 +46,7 @@ if user_count == 0:
     connection.commit()
     print("Initial user created.")
 
+# Configure the server socket and listening port
 SERVER_HOST = "0.0.0.0"
 SERVER_PORT = 42701
 
@@ -51,87 +56,28 @@ server_socket.listen(1)
 
 print("Server is waiting for a connection...")
 
-client_socket, client_address = server_socket.accept()
+# Keep accepting clients until the server receives a valid SHUTDOWN command
+shutdown = False
 
-print("Client connected:", client_address)
+while not shutdown:
 
-message = client_socket.recv(1024).decode().strip()
+    client_socket, client_address = server_socket.accept()
 
-print("Received from client:", message)
+    print("Client connected:", client_address)
 
-parts = message.split()
+    message = client_socket.recv(1024).decode().strip()
 
-# BALANCE
-if len(parts) == 2 and parts[0].upper() == "BALANCE":
-    try:
-        user_id = int(parts[1])
+    print("Received from client:", message)
 
-        cursor.execute(
-            "SELECT first_name, last_name, usd_balance FROM Users WHERE ID = ?",
-            (user_id,)
-        )
+    parts = message.split()
 
-        user = cursor.fetchone()
+    # BALANCE
+    if len(parts) == 2 and parts[0].upper() == "BALANCE":
+        try:
+            user_id = int(parts[1])
 
-        if user is None:
-            response = f"400 User {user_id} doesn't exist"
-        else:
-            first_name, last_name, balance = user
-            response = (
-                f"200 OK\n"
-                f"Balance for user {first_name} {last_name}: ${balance:.2f}"
-            )
-
-    except ValueError:
-        response = "403 message format error"
-
-
-# LIST
-elif len(parts) == 2 and parts[0].upper() == "LIST":
-    try:
-        user_id = int(parts[1])
-
-        cursor.execute(
-            "SELECT ID, card_name, card_type, rarity, count, owner_id "
-            "FROM Pokemon_cards WHERE owner_id = ?",
-            (user_id,)
-        )
-
-        cards = cursor.fetchall()
-
-        if not cards:
-            response = f"200 OK\nNo Pokemon cards found for user {user_id}"
-        else:
-            response = "200 OK\n"
-            response += "ID Card Name Type Rarity Count OwnerID\n"
-
-            for card in cards:
-                card_id, card_name, card_type, rarity, count, owner_id = card
-
-                response += (
-                    f"{card_id} {card_name} {card_type} "
-                    f"{rarity} {count} {owner_id}\n"
-                )
-
-    except ValueError:
-        response = "403 message format error"
-
-
-# BUY
-elif len(parts) == 7 and parts[0].upper() == "BUY":
-    try:
-        card_name = parts[1]
-        card_type = parts[2]
-        rarity = parts[3]
-        price = float(parts[4])
-        count = int(parts[5])
-        user_id = int(parts[6])
-
-        if price < 0 or count <= 0:
-            response = "403 message format error"
-        else:
             cursor.execute(
-                "SELECT usd_balance FROM Users WHERE ID = ?",
+                "SELECT first_name, last_name, usd_balance FROM Users WHERE ID = ?",
                 (user_id,)
             )
 
@@ -140,151 +86,213 @@ elif len(parts) == 7 and parts[0].upper() == "BUY":
             if user is None:
                 response = f"400 User {user_id} doesn't exist"
             else:
-                balance = user[0]
-                total_cost = price * count
+                first_name, last_name, balance = user
+                response = (
+                    f"200 OK\n"
+                    f"Balance for user {first_name} {last_name}: ${balance:.2f}"
+                )
 
-                if balance < total_cost:
-                    response = "400 Not enough USD balance"
-                else:
-                    new_balance = balance - total_cost
-
-                    cursor.execute(
-                        """
-                        INSERT INTO Pokemon_cards
-                        (card_name, card_type, rarity, count, owner_id)
-                        VALUES (?, ?, ?, ?, ?)
-                        """,
-                        (card_name, card_type, rarity, count, user_id)
-                    )
-
-                    cursor.execute(
-                        "UPDATE Users SET usd_balance = ? WHERE ID = ?",
-                        (new_balance, user_id)
-                    )
-
-                    connection.commit()
-
-                    response = (
-                        f"200 OK\n"
-                        f"BOUGHT: New balance: {count} {card_name}. "
-                        f"User USD balance ${new_balance:.2f}"
-                    )
-
-    except (ValueError, IndexError):
-        response = "403 message format error"
-
-
-# SELL
-elif len(parts) == 5 and parts[0].upper() == "SELL":
-    try:
-        card_name = parts[1]
-        sell_count = int(parts[2])
-        price = float(parts[3])
-        user_id = int(parts[4])
-
-        if sell_count <= 0 or price < 0:
+        except ValueError:
             response = "403 message format error"
-        else:
+
+    # LIST
+    elif len(parts) == 2 and parts[0].upper() == "LIST":
+        try:
+            user_id = int(parts[1])
+
             cursor.execute(
-                """
-                SELECT ID, count
-                FROM Pokemon_cards
-                WHERE card_name = ? AND owner_id = ?
-                """,
-                (card_name, user_id)
+                "SELECT ID, card_name, card_type, rarity, count, owner_id "
+                "FROM Pokemon_cards WHERE owner_id = ?",
+                (user_id,)
             )
 
-            card = cursor.fetchone()
+            cards = cursor.fetchall()
 
-            if card is None:
-                response = f"400 User {user_id} doesn't own {card_name}"
+            if not cards:
+                response = f"200 OK\nNo Pokemon cards found for user {user_id}"
             else:
-                card_id = card[0]
-                current_count = card[1]
+                response = "200 OK\n"
+                response += "ID Card Name Type Rarity Count OwnerID\n"
 
-                if current_count < sell_count:
-                    response = "400 Not enough Pokemon balance"
+                for card in cards:
+                    card_id, card_name, card_type, rarity, count, owner_id = card
+
+                    response += (
+                        f"{card_id} {card_name} {card_type} "
+                        f"{rarity} {count} {owner_id}\n"
+                    )
+
+        except ValueError:
+            response = "403 message format error"
+
+    # BUY
+    elif len(parts) == 7 and parts[0].upper() == "BUY":
+        try:
+            card_name = parts[1]
+            card_type = parts[2]
+            rarity = parts[3]
+            price = float(parts[4])
+            count = int(parts[5])
+            user_id = int(parts[6])
+
+            if price < 0 or count <= 0:
+                response = "403 message format error"
+            else:
+                cursor.execute(
+                    "SELECT usd_balance FROM Users WHERE ID = ?",
+                    (user_id,)
+                )
+
+                user = cursor.fetchone()
+
+                if user is None:
+                    response = f"400 User {user_id} doesn't exist"
                 else:
-                    total_sale = price * sell_count
-                    new_count = current_count - sell_count
+                    balance = user[0]
+                    total_cost = price * count
 
-                    cursor.execute(
-                        "UPDATE Users SET usd_balance = usd_balance + ? WHERE ID = ?",
-                        (total_sale, user_id)
-                    )
-
-                    if new_count == 0:
-                        cursor.execute(
-                            "DELETE FROM Pokemon_cards WHERE ID = ?",
-                            (card_id,)
-                        )
+                    if balance < total_cost:
+                        response = "400 Not enough USD balance"
                     else:
+                        new_balance = balance - total_cost
+
                         cursor.execute(
-                            "UPDATE Pokemon_cards SET count = ? WHERE ID = ?",
-                            (new_count, card_id)
+                            """
+                            INSERT INTO Pokemon_cards
+                            (card_name, card_type, rarity, count, owner_id)
+                            VALUES (?, ?, ?, ?, ?)
+                            """,
+                            (card_name, card_type, rarity, count, user_id)
                         )
 
-                    connection.commit()
+                        cursor.execute(
+                            "UPDATE Users SET usd_balance = ? WHERE ID = ?",
+                            (new_balance, user_id)
+                        )
 
-                    cursor.execute(
-                        "SELECT usd_balance FROM Users WHERE ID = ?",
-                        (user_id,)
-                    )
+                        connection.commit()
 
-                    new_balance = cursor.fetchone()[0]
+                        response = (
+                            f"200 OK\n"
+                            f"BOUGHT: New balance: {count} {card_name}. "
+                            f"User USD balance ${new_balance:.2f}"
+                        )
 
-                    response = (
-                        f"200 OK\n"
-                        f"SOLD: New balance: {new_count} {card_name}. "
-                        f"User's balance USD ${new_balance:.2f}"
-                    )
+        except (ValueError, IndexError):
+            response = "403 message format error"
 
-    except (ValueError, IndexError):
-        response = "403 message format error"
+    # SELL
+    elif len(parts) == 5 and parts[0].upper() == "SELL":
+        try:
+            card_name = parts[1]
+            sell_count = int(parts[2])
+            price = float(parts[3])
+            user_id = int(parts[4])
 
+            if sell_count <= 0 or price < 0:
+                response = "403 message format error"
+            else:
+                cursor.execute(
+                    """
+                    SELECT ID, count
+                    FROM Pokemon_cards
+                    WHERE card_name = ? AND owner_id = ?
+                    """,
+                    (card_name, user_id)
+                )
 
-elif len(parts) == 1 and parts[0].upper() == "QUIT":
-    response = "200 OK\nGoodbye!"
+                card = cursor.fetchone()
 
+                if card is None:
+                    response = f"400 User {user_id} doesn't own {card_name}"
+                else:
+                    card_id = card[0]
+                    current_count = card[1]
 
-elif len(parts) == 2 and parts[0].upper() == "SHUTDOWN":
-    try:
-        user_id = int(parts[1])
+                    if current_count < sell_count:
+                        response = "400 Not enough Pokemon balance"
+                    else:
+                        total_sale = price * sell_count
+                        new_count = current_count - sell_count
 
-        cursor.execute(
-            "SELECT is_root FROM Users WHERE ID = ?",
-            (user_id,)
-        )
+                        cursor.execute(
+                            "UPDATE Users SET usd_balance = usd_balance + ? WHERE ID = ?",
+                            (total_sale, user_id)
+                        )
 
-        user = cursor.fetchone()
+                        if new_count == 0:
+                            cursor.execute(
+                                "DELETE FROM Pokemon_cards WHERE ID = ?",
+                                (card_id,)
+                            )
+                        else:
+                            cursor.execute(
+                                "UPDATE Pokemon_cards SET count = ? WHERE ID = ?",
+                                (new_count, card_id)
+                            )
 
-        if user is None:
-            response = f"400 User {user_id} doesn't exist"
+                        connection.commit()
 
-        elif user[0] != 1:
-            response = "401 Unauthorized"
+                        cursor.execute(
+                            "SELECT usd_balance FROM Users WHERE ID = ?",
+                            (user_id,)
+                        )
 
-        else:
-            response = "200 OK\nServer shutting down..."
+                        new_balance = cursor.fetchone()[0]
 
-            client_socket.sendall((response + "\n").encode())
+                        response = (
+                            f"200 OK\n"
+                            f"SOLD: New balance: {new_count} {card_name}. "
+                            f"User's balance USD ${new_balance:.2f}"
+                        )
 
-            client_socket.close()
-            server_socket.close()
-            connection.close()
+        except (ValueError, IndexError):
+            response = "403 message format error"
 
-            print("Server stopped.")
-            raise SystemExit
+    # QUIT
+    elif len(parts) == 1 and parts[0].upper() == "QUIT":
+        response = "200 OK\nGoodbye!"
 
-    except ValueError:
-        response = "403 message format error"
+    # SHUTDOWN
+    elif len(parts) == 2 and parts[0].upper() == "SHUTDOWN":
+        try:
+            user_id = int(parts[1])
 
-else:
-    response = "400 invalid command"
+            cursor.execute(
+                "SELECT is_root FROM Users WHERE ID = ?",
+                (user_id,)
+            )
 
-client_socket.sendall((response + "\n").encode())
+            user = cursor.fetchone()
 
-client_socket.close()
+            if user is None:
+                response = f"400 User {user_id} doesn't exist"
+
+            elif user[0] != 1:
+                response = "401 Unauthorized"
+
+            else:
+                response = "200 OK\nServer shutting down..."
+
+                client_socket.sendall((response + "\n").encode())
+
+                client_socket.close()
+
+                shutdown = True
+                continue
+
+        except ValueError:
+            response = "403 message format error"
+
+    else:
+        response = "400 invalid command"
+
+    client_socket.sendall((response + "\n").encode())
+
+    client_socket.close()
+
+# Close the server socket and database connection
 server_socket.close()
+connection.close()
 
 print("Server stopped.")
