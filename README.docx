@@ -82,6 +82,7 @@ The SQLite database contains a Users table and a Pokemon_cards table. The server
 
 Student Role
 Aditi Girdhar: implemented and tested the client-server communication, SQLite database operations, BALANCE, LIST, BUY, SELL, QUIT, SHUTDOWN, error handling, and one-client-at-a-time behavior.
+Mohmed Saleh: Ran the server and client across multiple test scenarios to verify functionality, validated BUY/SELL/LIST/BALANCE outputs against expected results, and confirmed error handling for edge cases (invalid users, insufficient balance, insufficient card counts, malformed commands).
 
 Known Problems or Bugs
 No known problems were observed during the local tests performed for the implemented commands. The project was tested using Python 3 and SQLite.
