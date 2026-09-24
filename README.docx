@@ -52,7 +52,7 @@ LIST <owner_ID>
 
 QUIT
 
-SHUTDOWN <owner_ID>
+SHUTDOWN 
 
 Sample Commands and Output
 
@@ -99,7 +99,7 @@ Goodbye!
 
 SHUTDOWN
 
-Command: SHUTDOWN 1
+Command: SHUTDOWN 
 
 Example response:
 200 OK
