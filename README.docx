@@ -1,144 +1,101 @@
 CIS 427 Project 1
 
 Client-Server Pokémon Card Trading System
-
 Student Information
 
 Student: Aditi Girdhar
-
 Email: aditigi@umich.edu
 
 Programming Language: Python 3
-
 Database: SQLite
 
-Introduction
-
+Introduction:
 This project implements a client-server Pokémon card trading system using Python sockets and an SQLite database. The server receives commands from a client and performs operations involving users, Pokémon cards, and USD balances.
 
 Project Files
-
 server.py - Server program, socket communication, and database operations.
-
 client.py - Client program used to connect to the server and send commands.
-
 pokemon.db - SQLite database used to store users and Pokémon cards.
 
 How to Run
-
 Open a terminal in the project folder.
-
 Start the server with: python server.py
-
 Open a second terminal in the same project folder.
-
 Start the client with: python client.py localhost
-
 When the client displays 'Enter command:', enter one of the supported commands.
-
 Client Connection Model
-
 This assignment requires one active client connection to the server at a time. The server accepts a client connection, processes the client's command, sends the response, and then closes that client connection. The server remains available to accept another client connection afterward. Simultaneous multiple-client support is not required for this assignment.
 
 Implemented Commands
 
 BUY <Pokemon_Name> <card_type> <rarity> <price> <count> <owner_ID>
-
 SELL <card_Name> <quantity> <price> <owner_ID>
-
 BALANCE <owner_ID>
-
 LIST <owner_ID>
-
 QUIT
-
 SHUTDOWN 
 
 Sample Commands and Output
 
 BALANCE
-
 Command: BALANCE 1
-
 Example response:
 200 OK
 Balance for user John Doe: $95.01
 
 LIST
-
 Command: LIST 1
-
 Example response:
 200 OK
 ID Card Name Type Rarity Count OwnerID
 1 Pikachu Electric Common 1 1
 
 BUY
-
 Command: BUY Charmander Fire Common 5.00 1 1
-
 Example response:
 200 OK
 BOUGHT: New balance: 1 Charmander. User USD balance $90.01
 
 SELL
-
 Command: SELL Charmander 1 5.00 1
-
 Example response:
 200 OK
 SOLD: New balance: 0 Charmander. User's balance USD $95.01
 
 QUIT
-
 Command: QUIT
-
 Example response:
 200 OK
 Goodbye!
 
 SHUTDOWN
-
 Command: SHUTDOWN 
-
 Example response:
 200 OK
 Server shutting down...
 
 Error Handling
-
 The server returns error messages for invalid commands, invalid message formats, users that do not exist, insufficient USD balance, insufficient Pokémon card quantity, and cards that a user does not own. Invalid input is handled so that the server does not terminate from normal command errors.
 
 Database
-
 The SQLite database contains a Users table and a Pokemon_cards table. The server creates the tables if they do not already exist. If there are no users, an initial root user is created with a $100.00 balance.
 
 Student Role
-
 Aditi Girdhar: implemented and tested the client-server communication, SQLite database operations, BALANCE, LIST, BUY, SELL, QUIT, SHUTDOWN, error handling, and one-client-at-a-time behavior.
 
 Known Problems or Bugs
-
 No known problems were observed during the local tests performed for the implemented commands. The project was tested using Python 3 and SQLite.
 
 Testing Summary
-
 BALANCE tested successfully.
-
 LIST tested successfully.
-
 BUY tested successfully and updated the database and user balance.
-
 SELL tested successfully and updated the database and user balance.
-
 QUIT tested successfully.
-
 SHUTDOWN tested successfully during local testing.
-
 Invalid command handling tested successfully.
-
 One active client connection at a time was tested successfully.
 
 Submission Notes
-
 The project uses Python 3, so a Makefile is not required. The submission directory should contain the source code, database/data file, and README.docx, without compiled or project configuration files.
+
