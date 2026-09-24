@@ -254,35 +254,14 @@ while not shutdown:
         response = "200 OK\nGoodbye!"
 
     # SHUTDOWN
-    elif len(parts) == 2 and parts[0].upper() == "SHUTDOWN":
-        try:
-            user_id = int(parts[1])
+    elif len(parts) == 1 and parts[0].upper() == "SHUTDOWN":
+        response = "200 OK"
 
-            cursor.execute(
-                "SELECT is_root FROM Users WHERE ID = ?",
-                (user_id,)
-            )
+        client_socket.sendall((response + "\n").encode())
+        client_socket.close()
 
-            user = cursor.fetchone()
-
-            if user is None:
-                response = f"400 User {user_id} doesn't exist"
-
-            elif user[0] != 1:
-                response = "401 Unauthorized"
-
-            else:
-                response = "200 OK\nServer shutting down..."
-
-                client_socket.sendall((response + "\n").encode())
-
-                client_socket.close()
-
-                shutdown = True
-                continue
-
-        except ValueError:
-            response = "403 message format error"
+        shutdown = True
+        continue
 
     else:
         response = "400 invalid command"
